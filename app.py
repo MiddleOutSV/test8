@@ -43,9 +43,6 @@ def get_color_for_rsi(rsi):
         b = int(255)
         return f"rgb({r}, {g}, {b})"
 
-# 앱 제목
-st.title("트럼프 수혜주 비교 분석")
-
 # 데이터 수집
 @st.cache_data
 def load_data():
@@ -62,8 +59,6 @@ def load_data():
             "Beta": info.get("beta", 0) or 0
         }
     return pd.DataFrame(data).T
-
-df = load_data()
 
 # RSI 시각화
 def show_rsi():
@@ -150,16 +145,43 @@ def show_beta():
     fig_beta.update_layout(title="Beta 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
     st.plotly_chart(fig_beta)
 
-# 버튼 생성 및 시각화 표시
-if st.button('RSI'):
-    show_rsi()
-if st.button('EBITDA'):
-    show_ebitda()
-if st.button('Free Cash Flow'):
-    show_fcf()
-if st.button('Total Assets'):
-    show_assets()
-if st.button('Total Capitalization'):
-    show_cap()
-if st.button('Beta'):
-    show_beta()
+# 앱 제목
+st.title("트럼프 수혜주 비교 분석")
+
+# 데이터 로드
+df = load_data()
+
+# 버튼 레이아웃 설정
+col1, col2, col3 = st.columns(3)
+with col1:
+    rsi_button = st.button('RSI')
+    total_assets_button = st.button('Total Assets')
+with col2:
+    ebitda_button = st.button('EBITDA')
+    total_cap_button = st.button('Total Capitalization')
+with col3:
+    fcf_button = st.button('Free Cash Flow')
+    beta_button = st.button('Beta')
+
+# 시각화를 표시할 컨테이너
+chart_container = st.empty()
+
+# 버튼 클릭에 따른 시각화
+if rsi_button:
+    with chart_container.container():
+        show_rsi()
+elif ebitda_button:
+    with chart_container.container():
+        show_ebitda()
+elif fcf_button:
+    with chart_container.container():
+        show_fcf()
+elif total_assets_button:
+    with chart_container.container():
+        show_assets()
+elif total_cap_button:
+    with chart_container.container():
+        show_cap()
+elif beta_button:
+    with chart_container.container():
+        show_beta()
