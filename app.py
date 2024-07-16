@@ -2,7 +2,6 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 
 # 트럼프 수혜주 티커 리스트
 tickers = ["DJT", "GEO", "AXON", "CDMO", "BRCC", "INTC"]
@@ -49,27 +48,61 @@ df = pd.DataFrame(data).T
 fig_rsi = go.Figure()
 for ticker in tickers:
     rsi = df.loc[ticker, "RSI"]
-    # 색상 설정 수정
-    color = px.colors.sequential.RdBu[int((rsi - 30) / 40 * 9)]  # RdBu 컬러 스케일 사용
+    color = f"rgb({int(255 * (rsi - 50) / 50) if rsi > 50 else 0}, 0, {int(255 * (50 - rsi) / 50) if rsi < 50 else 0})"
     fig_rsi.add_trace(go.Scatter(
-        x=[ticker], y=[rsi],
-        mode='markers',
+        x=[ticker], y=[1],
+        mode='markers+text',
         marker=dict(size=50, color=color),
+        text=str(int(rsi)),
+        textfont=dict(color='white'),
         name=ticker
     ))
 
-fig_rsi.update_layout(title="RSI 비교", yaxis_title="RSI")
+fig_rsi.update_layout(title="RSI 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
 st.plotly_chart(fig_rsi)
 
-# EBITDA와 Free Cash Flow 비교
-fig_financials = go.Figure()
-fig_financials.add_trace(go.Bar(x=tickers, y=df["EBITDA"], name="EBITDA"))
-fig_financials.add_trace(go.Bar(x=tickers, y=df["Free Cash Flow"], name="Free Cash Flow"))
-fig_financials.update_layout(title="EBITDA와 Free Cash Flow 비교", barmode='group')
-st.plotly_chart(fig_financials)
+# EBITDA 비교
+fig_ebitda = go.Figure(data=[go.Bar(x=tickers, y=df["EBITDA"])])
+fig_ebitda.update_layout(title="EBITDA 비교")
+st.plotly_chart(fig_ebitda)
 
-# Total Assets, Total Capitalization, Beta 비교
-fig_bubble = px.scatter(df, x="Total Assets", y="Total Capitalization", size="Beta", 
-                        hover_name=df.index, size_max=60, 
-                        title="Total Assets, Total Capitalization, Beta 비교")
-st.plotly_chart(fig_bubble)
+# Free Cash Flow 비교
+fig_fcf = go.Figure(data=[go.Bar(x=tickers, y=df["Free Cash Flow"])])
+fig_fcf.update_layout(title="Free Cash Flow 비교")
+st.plotly_chart(fig_fcf)
+
+# Total Assets 비교
+fig_assets = go.Figure(data=[go.Scatter(
+    x=tickers,
+    y=[1]*len(tickers),
+    mode='markers',
+    marker=dict(size=df["Total Assets"] / df["Total Assets"].max() * 100, sizemode='area'),
+    text=df["Total Assets"],
+    hoverinfo='text'
+)])
+fig_assets.update_layout(title="Total Assets 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
+st.plotly_chart(fig_assets)
+
+# Total Capitalization 비교
+fig_cap = go.Figure(data=[go.Scatter(
+    x=tickers,
+    y=[1]*len(tickers),
+    mode='markers',
+    marker=dict(size=df["Total Capitalization"] / df["Total Capitalization"].max() * 100, sizemode='area'),
+    text=df["Total Capitalization"],
+    hoverinfo='text'
+)])
+fig_cap.update_layout(title="Total Capitalization 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
+st.plotly_chart(fig_cap)
+
+# Beta 비교
+fig_beta = go.Figure(data=[go.Scatter(
+    x=tickers,
+    y=[1]*len(tickers),
+    mode='markers',
+    marker=dict(size=df["Beta"] / df["Beta"].max() * 100, sizemode='area'),
+    text=df["Beta"],
+    hoverinfo='text'
+)])
+fig_beta.update_layout(title="Beta 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
+st.plotly_chart(fig_beta)
