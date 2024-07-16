@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
+import numpy as np
 
 # 트럼프 수혜주 티커 리스트
 tickers = ["DJT", "GEO", "AXON", "CDMO", "BRCC", "INTC"]
@@ -35,11 +36,11 @@ for ticker in tickers:
     rsi = calculate_rsi(history)
     data[ticker] = {
         "RSI": rsi,
-        "EBITDA": info.get("ebitda", 0),
-        "Total Assets": info.get("totalAssets", 0),
-        "Total Capitalization": info.get("marketCap", 0),
-        "Free Cash Flow": info.get("freeCashflow", 0),
-        "Beta": info.get("beta", 0)
+        "EBITDA": info.get("ebitda", 0) or 0,
+        "Total Assets": info.get("totalAssets", 0) or 0,
+        "Total Capitalization": info.get("marketCap", 0) or 0,
+        "Free Cash Flow": info.get("freeCashflow", 0) or 0,
+        "Beta": info.get("beta", 0) or 0
     }
 
 df = pd.DataFrame(data).T
@@ -71,37 +72,54 @@ fig_fcf = go.Figure(data=[go.Bar(x=tickers, y=df["Free Cash Flow"])])
 fig_fcf.update_layout(title="Free Cash Flow 비교")
 st.plotly_chart(fig_fcf)
 
+# 원 크기 계산 함수
+def calculate_circle_sizes(values):
+    values = np.array(values)
+    values = np.where(values > 0, values, np.nan)  # 0 이하의 값을 NaN으로 변경
+    min_size, max_size = 10, 100  # 최소 및 최대 원 크기
+    if np.isnan(values).all():
+        return [min_size] * len(values)
+    sizes = (values - np.nanmin(values)) / (np.nanmax(values) - np.nanmin(values))
+    sizes = sizes * (max_size - min_size) + min_size
+    return np.where(np.isnan(sizes), min_size, sizes)
+
 # Total Assets 비교
+asset_sizes = calculate_circle_sizes(df["Total Assets"])
 fig_assets = go.Figure(data=[go.Scatter(
     x=tickers,
     y=[1]*len(tickers),
-    mode='markers',
-    marker=dict(size=df["Total Assets"] / df["Total Assets"].max() * 100, sizemode='area'),
-    text=df["Total Assets"],
+    mode='markers+text',
+    marker=dict(size=asset_sizes, sizemode='diameter'),
+    text=df["Total Assets"].apply(lambda x: f"{x:,.0f}"),
+    textposition='top center',
     hoverinfo='text'
 )])
 fig_assets.update_layout(title="Total Assets 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
 st.plotly_chart(fig_assets)
 
 # Total Capitalization 비교
+cap_sizes = calculate_circle_sizes(df["Total Capitalization"])
 fig_cap = go.Figure(data=[go.Scatter(
     x=tickers,
     y=[1]*len(tickers),
-    mode='markers',
-    marker=dict(size=df["Total Capitalization"] / df["Total Capitalization"].max() * 100, sizemode='area'),
-    text=df["Total Capitalization"],
+    mode='markers+text',
+    marker=dict(size=cap_sizes, sizemode='diameter'),
+    text=df["Total Capitalization"].apply(lambda x: f"{x:,.0f}"),
+    textposition='top center',
     hoverinfo='text'
 )])
 fig_cap.update_layout(title="Total Capitalization 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
 st.plotly_chart(fig_cap)
 
 # Beta 비교
+beta_sizes = calculate_circle_sizes(df["Beta"])
 fig_beta = go.Figure(data=[go.Scatter(
     x=tickers,
     y=[1]*len(tickers),
-    mode='markers',
-    marker=dict(size=df["Beta"] / df["Beta"].max() * 100, sizemode='area'),
-    text=df["Beta"],
+    mode='markers+text',
+    marker=dict(size=beta_sizes, sizemode='diameter'),
+    text=df["Beta"].apply(lambda x: f"{x:.2f}"),
+    textposition='top center',
     hoverinfo='text'
 )])
 fig_beta.update_layout(title="Beta 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
