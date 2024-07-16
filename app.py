@@ -49,7 +49,8 @@ df = pd.DataFrame(data).T
 fig_rsi = go.Figure()
 for ticker in tickers:
     rsi = df.loc[ticker, "RSI"]
-    color = f"rgb({int(255 * (rsi - 30) / 40)}, 0, {int(255 * (70 - rsi) / 40)})"
+    # 색상 설정 수정
+    color = px.colors.sequential.RdBu[int((rsi - 30) / 40 * 9)]  # RdBu 컬러 스케일 사용
     fig_rsi.add_trace(go.Scatter(
         x=[ticker], y=[rsi],
         mode='markers',
