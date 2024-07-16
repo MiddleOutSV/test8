@@ -31,14 +31,12 @@ def get_color_for_rsi(rsi):
     if rsi == 50:
         return "rgb(255, 255, 255)"  # 흰색
     elif rsi > 50:
-        # 50에서 100으로 갈수록 빨간색이 진해짐
         intensity = (rsi - 50) / 50
         r = int(255)
         g = int(255 * (1 - intensity))
         b = int(255 * (1 - intensity))
         return f"rgb({r}, {g}, {b})"
     else:
-        # 50에서 0으로 갈수록 파란색이 진해짐
         intensity = (50 - rsi) / 50
         r = int(255 * (1 - intensity))
         g = int(255 * (1 - intensity))
@@ -49,53 +47,58 @@ def get_color_for_rsi(rsi):
 st.title("트럼프 수혜주 비교 분석")
 
 # 데이터 수집
-data = {}
-for ticker in tickers:
-    info, history = get_stock_data(ticker)
-    rsi = calculate_rsi(history)
-    data[ticker] = {
-        "RSI": rsi,
-        "EBITDA": info.get("ebitda", 0) or 0,
-        "Total Assets": info.get("totalAssets", 0) or 0,
-        "Total Capitalization": info.get("marketCap", 0) or 0,
-        "Free Cash Flow": info.get("freeCashflow", 0) or 0,
-        "Beta": info.get("beta", 0) or 0
-    }
+@st.cache_data
+def load_data():
+    data = {}
+    for ticker in tickers:
+        info, history = get_stock_data(ticker)
+        rsi = calculate_rsi(history)
+        data[ticker] = {
+            "RSI": rsi,
+            "EBITDA": info.get("ebitda", 0) or 0,
+            "Total Assets": info.get("totalAssets", 0) or 0,
+            "Total Capitalization": info.get("marketCap", 0) or 0,
+            "Free Cash Flow": info.get("freeCashflow", 0) or 0,
+            "Beta": info.get("beta", 0) or 0
+        }
+    return pd.DataFrame(data).T
 
-df = pd.DataFrame(data).T
+df = load_data()
 
 # RSI 시각화
-fig_rsi = go.Figure()
-for ticker in tickers:
-    rsi = df.loc[ticker, "RSI"]
-    color = get_color_for_rsi(rsi)
-    fig_rsi.add_trace(go.Scatter(
-        x=[ticker], y=[1],
-        mode='markers+text',
-        marker=dict(size=50, color=color),
-        text=str(int(rsi)),
-        textfont=dict(color='black'),
-        name=ticker
-    ))
-
-fig_rsi.update_layout(title="RSI 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
-st.plotly_chart(fig_rsi)
+def show_rsi():
+    fig_rsi = go.Figure()
+    for ticker in tickers:
+        rsi = df.loc[ticker, "RSI"]
+        color = get_color_for_rsi(rsi)
+        fig_rsi.add_trace(go.Scatter(
+            x=[ticker], y=[1],
+            mode='markers+text',
+            marker=dict(size=50, color=color),
+            text=str(int(rsi)),
+            textfont=dict(color='black'),
+            name=ticker
+        ))
+    fig_rsi.update_layout(title="RSI 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
+    st.plotly_chart(fig_rsi)
 
 # EBITDA 비교
-fig_ebitda = go.Figure(data=[go.Bar(x=tickers, y=df["EBITDA"])])
-fig_ebitda.update_layout(title="EBITDA 비교")
-st.plotly_chart(fig_ebitda)
+def show_ebitda():
+    fig_ebitda = go.Figure(data=[go.Bar(x=tickers, y=df["EBITDA"])])
+    fig_ebitda.update_layout(title="EBITDA 비교")
+    st.plotly_chart(fig_ebitda)
 
 # Free Cash Flow 비교
-fig_fcf = go.Figure(data=[go.Bar(x=tickers, y=df["Free Cash Flow"])])
-fig_fcf.update_layout(title="Free Cash Flow 비교")
-st.plotly_chart(fig_fcf)
+def show_fcf():
+    fig_fcf = go.Figure(data=[go.Bar(x=tickers, y=df["Free Cash Flow"])])
+    fig_fcf.update_layout(title="Free Cash Flow 비교")
+    st.plotly_chart(fig_fcf)
 
 # 원 크기 계산 함수
 def calculate_circle_sizes(values):
     values = np.array(values)
-    values = np.where(values > 0, values, np.nan)  # 0 이하의 값을 NaN으로 변경
-    min_size, max_size = 10, 100  # 최소 및 최대 원 크기
+    values = np.where(values > 0, values, np.nan)
+    min_size, max_size = 10, 100
     if np.isnan(values).all():
         return [min_size] * len(values)
     sizes = (values - np.nanmin(values)) / (np.nanmax(values) - np.nanmin(values))
@@ -103,43 +106,60 @@ def calculate_circle_sizes(values):
     return np.where(np.isnan(sizes), min_size, sizes)
 
 # Total Assets 비교
-asset_sizes = calculate_circle_sizes(df["Total Assets"])
-fig_assets = go.Figure(data=[go.Scatter(
-    x=tickers,
-    y=[1]*len(tickers),
-    mode='markers+text',
-    marker=dict(size=asset_sizes, sizemode='diameter'),
-    text=df["Total Assets"].apply(lambda x: f"{x:,.0f}"),
-    textposition='top center',
-    hoverinfo='text'
-)])
-fig_assets.update_layout(title="Total Assets 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
-st.plotly_chart(fig_assets)
+def show_assets():
+    asset_sizes = calculate_circle_sizes(df["Total Assets"])
+    fig_assets = go.Figure(data=[go.Scatter(
+        x=tickers,
+        y=[1]*len(tickers),
+        mode='markers+text',
+        marker=dict(size=asset_sizes, sizemode='diameter'),
+        text=df["Total Assets"].apply(lambda x: f"{x:,.0f}"),
+        textposition='top center',
+        hoverinfo='text'
+    )])
+    fig_assets.update_layout(title="Total Assets 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
+    st.plotly_chart(fig_assets)
 
 # Total Capitalization 비교
-cap_sizes = calculate_circle_sizes(df["Total Capitalization"])
-fig_cap = go.Figure(data=[go.Scatter(
-    x=tickers,
-    y=[1]*len(tickers),
-    mode='markers+text',
-    marker=dict(size=cap_sizes, sizemode='diameter'),
-    text=df["Total Capitalization"].apply(lambda x: f"{x:,.0f}"),
-    textposition='top center',
-    hoverinfo='text'
-)])
-fig_cap.update_layout(title="Total Capitalization 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
-st.plotly_chart(fig_cap)
+def show_cap():
+    cap_sizes = calculate_circle_sizes(df["Total Capitalization"])
+    fig_cap = go.Figure(data=[go.Scatter(
+        x=tickers,
+        y=[1]*len(tickers),
+        mode='markers+text',
+        marker=dict(size=cap_sizes, sizemode='diameter'),
+        text=df["Total Capitalization"].apply(lambda x: f"{x:,.0f}"),
+        textposition='top center',
+        hoverinfo='text'
+    )])
+    fig_cap.update_layout(title="Total Capitalization 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
+    st.plotly_chart(fig_cap)
 
 # Beta 비교
-beta_sizes = calculate_circle_sizes(df["Beta"])
-fig_beta = go.Figure(data=[go.Scatter(
-    x=tickers,
-    y=[1]*len(tickers),
-    mode='markers+text',
-    marker=dict(size=beta_sizes, sizemode='diameter'),
-    text=df["Beta"].apply(lambda x: f"{x:.2f}"),
-    textposition='top center',
-    hoverinfo='text'
-)])
-fig_beta.update_layout(title="Beta 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
-st.plotly_chart(fig_beta)
+def show_beta():
+    beta_sizes = calculate_circle_sizes(df["Beta"])
+    fig_beta = go.Figure(data=[go.Scatter(
+        x=tickers,
+        y=[1]*len(tickers),
+        mode='markers+text',
+        marker=dict(size=beta_sizes, sizemode='diameter'),
+        text=df["Beta"].apply(lambda x: f"{x:.2f}"),
+        textposition='top center',
+        hoverinfo='text'
+    )])
+    fig_beta.update_layout(title="Beta 비교", yaxis=dict(showticklabels=False, range=[0, 2]))
+    st.plotly_chart(fig_beta)
+
+# 버튼 생성 및 시각화 표시
+if st.button('RSI'):
+    show_rsi()
+if st.button('EBITDA'):
+    show_ebitda()
+if st.button('Free Cash Flow'):
+    show_fcf()
+if st.button('Total Assets'):
+    show_assets()
+if st.button('Total Capitalization'):
+    show_cap()
+if st.button('Beta'):
+    show_beta()
