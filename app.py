@@ -26,6 +26,25 @@ def calculate_rsi(data, periods=14):
     rsi = 100 - (100 / (1 + rsi))
     return rsi.iloc[-1]
 
+# RSI에 따른 색상 계산 함수
+def get_color_for_rsi(rsi):
+    if rsi == 50:
+        return "rgb(255, 255, 255)"  # 흰색
+    elif rsi > 50:
+        # 50에서 100으로 갈수록 빨간색이 진해짐
+        intensity = (rsi - 50) / 50
+        r = int(255)
+        g = int(255 * (1 - intensity))
+        b = int(255 * (1 - intensity))
+        return f"rgb({r}, {g}, {b})"
+    else:
+        # 50에서 0으로 갈수록 파란색이 진해짐
+        intensity = (50 - rsi) / 50
+        r = int(255 * (1 - intensity))
+        g = int(255 * (1 - intensity))
+        b = int(255)
+        return f"rgb({r}, {g}, {b})"
+
 # 앱 제목
 st.title("트럼프 수혜주 비교 분석")
 
@@ -49,13 +68,13 @@ df = pd.DataFrame(data).T
 fig_rsi = go.Figure()
 for ticker in tickers:
     rsi = df.loc[ticker, "RSI"]
-    color = f"rgb({int(255 * (rsi - 50) / 50) if rsi > 50 else 0}, 0, {int(255 * (50 - rsi) / 50) if rsi < 50 else 0})"
+    color = get_color_for_rsi(rsi)
     fig_rsi.add_trace(go.Scatter(
         x=[ticker], y=[1],
         mode='markers+text',
         marker=dict(size=50, color=color),
         text=str(int(rsi)),
-        textfont=dict(color='white'),
+        textfont=dict(color='black'),
         name=ticker
     ))
 
